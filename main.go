@@ -83,13 +83,13 @@ func (g *Game) drawCannon(screen *ebiten.Image) {
 	op.GeoM.Translate(-float64(w)/2, -float64(h)/2)
 	// i := (g.count / 5) % frameNum
 	degree := calculateDegree(screenWidth/2, screenHeight/2, g.mx, g.my)
-	fmt.Println(degree)
 
 	op.GeoM.Rotate(float64(degree%360) * 2 * math.Pi / 360)
 	op.GeoM.Translate(screenWidth/2, screenHeight/2)
 	op.Filter = ebiten.FilterLinear // シャギー対策
 	screen.DrawImage(cannonImage, op)
 
+	// 画像を回転させる際にspriteを採用した場合の処理。FilterLinearでspriteを利用する必要はなくなったが、参考用に残しておく
 	// op := &ebiten.DrawImageOptions{}
 	// op.GeoM.Translate(-float64(frameWidth)/2, -float64(frameHeight)/2)
 	// op.GeoM.Translate(screenWidth/2, screenHeight/2)
@@ -101,10 +101,13 @@ func (g *Game) drawCannon(screen *ebiten.Image) {
 }
 
 func (g *Game) drawCannonBall(screen *ebiten.Image) {
+	//cbiW, cbiH := cannonBallImage.Size()
 	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(-float64(frameWidth)/2, -float64(frameHeight)/2)
-	op.GeoM.Translate(screenWidth/2, screenHeight/2)
-	// i := (g.count / 5) % frameNum
+	// op.GeoM.Translate(-float64(cbiW)/2, -float64(cbiH)/2)
+	// op.GeoM.Translate(-float64(frameWidth)/2, -float64(frameHeight)/2)
+	adjustX, adjustY := 2, 2
+	op.GeoM.Translate(float64(screenWidth/2-adjustX), float64(screenHeight/2-adjustY))
+	// op.GeoM.Translate(float64(screenWidth/2), float64(screenHeight/2))
 	screen.DrawImage(cannonBallImage, op)
 }
 
@@ -121,6 +124,7 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 func (g *Game) Update() error {
 	g.count++
 	g.mx, g.my = ebiten.CursorPosition()
+	// fmt.Println(g.mx, g.my)
 
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		fmt.Println("hassya")
