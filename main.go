@@ -23,6 +23,8 @@ const (
 	frameWidth  = 26 // cannon_spriteの関連値
 	frameHeight = 26 // cannon_spriteの関連値
 	frameNum    = 11 // cannon_spriteの関連値
+
+	cannonBallVelocity = 10
 )
 
 var (
@@ -43,6 +45,7 @@ func OutputLog(s string) {
 }
 
 func init() {
+	fmt.Println("init")
 	var err error
 	//cannonImage, _, err = ebitenutil.NewImageFromFile("src/dist/image/sprite_cannon.png")
 	cannonImage, _, err = ebitenutil.NewImageFromFile("src/dist/image/cannon.png")
@@ -58,9 +61,16 @@ type Game struct {
 	// mousePosition
 	mx, my int
 
-	// CannonBall's position
-	cbx int
-	cby int
+	// CannonBall
+	cbx  float64 // xPosition
+	cby  float64 // yPosition
+	cbv  float64 // vector速度
+	cbvx float64 // x軸速度
+	cbvy float64 // y軸速度
+
+	// Cannon Degree
+	cannonRadian float64
+	cannonDegree int
 
 	// sound effect
 	// firePlayer   *audio.Player
@@ -68,13 +78,11 @@ type Game struct {
 	// criticalHitPlayer   *audio.Player
 }
 
-func calculateDegree(x0, y0, x1, y1 int) int {
+func (g *Game) setCannonDirection(x0, y0, x1, y1 int) {
 	//var tan float64 = float64(y1-y0) / float64(x1-x0)
 	//sita := math.Atan(tan)
-	radian := math.Atan2(float64(y1-y0), float64(x1-x0))
-	var degree int = int(math.Round(radian*180/math.Pi)) + 90 // 0 ~ 360（中心の上位置を0として、時計回りで増加）
-
-	return degree
+	g.cannonRadian = math.Atan2(float64(y1-y0), float64(x1-x0)) + math.Pi/2
+	g.cannonDegree = int(math.Round(g.cannonRadian * 180 / math.Pi)) // 0 ~ 360（中心の上位置を0として、時計回りで増加）
 }
 
 func (g *Game) drawCannon(screen *ebiten.Image) {
@@ -82,9 +90,9 @@ func (g *Game) drawCannon(screen *ebiten.Image) {
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(-float64(w)/2, -float64(h)/2)
 	// i := (g.count / 5) % frameNum
-	degree := calculateDegree(screenWidth/2, screenHeight/2, g.mx, g.my)
+	//degree := calculateDegree(screenWidth/2, screenHeight/2, g.mx, g.my)
 
-	op.GeoM.Rotate(float64(degree%360) * 2 * math.Pi / 360)
+	op.GeoM.Rotate(float64(g.cannonDegree%360) * 2 * math.Pi / 360)
 	op.GeoM.Translate(screenWidth/2, screenHeight/2)
 	op.Filter = ebiten.FilterLinear // シャギー対策
 	screen.DrawImage(cannonImage, op)
@@ -103,12 +111,38 @@ func (g *Game) drawCannon(screen *ebiten.Image) {
 func (g *Game) drawCannonBall(screen *ebiten.Image) {
 	//cbiW, cbiH := cannonBallImage.Size()
 	op := &ebiten.DrawImageOptions{}
-	// op.GeoM.Translate(-float64(cbiW)/2, -float64(cbiH)/2)
-	// op.GeoM.Translate(-float64(frameWidth)/2, -float64(frameHeight)/2)
-	adjustX, adjustY := 2, 2
-	op.GeoM.Translate(float64(screenWidth/2-adjustX), float64(screenHeight/2-adjustY))
+	op.GeoM.Translate(g.cbx, g.cby)
 	// op.GeoM.Translate(float64(screenWidth/2), float64(screenHeight/2))
 	screen.DrawImage(cannonBallImage, op)
+}
+
+func (g *Game) setInitialPositionCannonBall() {
+	adjustX, adjustY := 2, 2
+	g.cbx, g.cby = float64(screenWidth/2-adjustX), float64(screenHeight/2-adjustY)
+}
+
+func (g *Game) fireCannonBall() {
+	fmt.Println("setInitialPositionCannonBall")
+	g.setInitialPositionCannonBall()
+	g.cbv = cannonBallVelocity
+	g.cbvx = math.Sin(g.cannonRadian) * g.cbv // 中央から見て上の位置が0度地点なので、xはsinから算出する
+	g.cbvy = math.Cos(g.cannonRadian) * g.cbv * -1
+	fmt.Println(g.cannonDegree, g.cbvx, g.cbvy)
+}
+
+func (g *Game) updateCannonBall(g_mx int, g_my int) {
+	if g.cbx < 0 || g.cby < 0 || g.cbx > screenWidth || g.cby > screenHeight {
+		g.cbvx, g.cbvy = 0, 0
+	} else {
+		g.cbx += g.cbvx
+		g.cby += g.cbvy
+	}
+	// fmt.Println(g.mx, g.my)
+	g.setCannonDirection(screenWidth/2, screenHeight/2, g_mx, g_my)
+
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		g.fireCannonBall()
+	}
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
@@ -123,13 +157,14 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 // error型を返す
 func (g *Game) Update() error {
 	g.count++
+
 	g.mx, g.my = ebiten.CursorPosition()
-	// fmt.Println(g.mx, g.my)
 
-	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-		fmt.Println("hassya")
+	g.updateCannonBall(g.mx, g.my)
 
-	}
+	// if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+	// 	g.fireCannonBall()
+	// }
 
 	// What touches have just ended?
 	// for id, t := range g.touches {
@@ -159,6 +194,7 @@ func (g *Game) Update() error {
 }
 
 func main() {
+	fmt.Println("main")
 	ebiten.SetWindowSize(screenWidth*2, screenHeight*2)
 	ebiten.SetWindowTitle("Render Image")
 	if err := ebiten.RunGame(&Game{}); err != nil {
