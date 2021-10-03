@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt" // for debug
-	"image"
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
@@ -45,7 +44,8 @@ func OutputLog(s string) {
 
 func init() {
 	var err error
-	cannonImage, _, err = ebitenutil.NewImageFromFile("src/dist/image/sprite_cannon.png")
+	//cannonImage, _, err = ebitenutil.NewImageFromFile("src/dist/image/sprite_cannon.png")
+	cannonImage, _, err = ebitenutil.NewImageFromFile("src/dist/image/cannon.png")
 	cannonBallImage, _, err = ebitenutil.NewImageFromFile("src/dist/image/cannonball.png")
 	if err != nil {
 		log.Fatal(err)
@@ -72,20 +72,32 @@ func calculateDegree(x0, y0, x1, y1 int) int {
 	//var tan float64 = float64(y1-y0) / float64(x1-x0)
 	//sita := math.Atan(tan)
 	radian := math.Atan2(float64(y1-y0), float64(x1-x0))
-	var degree int = int(math.Round(radian*180/math.Pi)) + 180 // 0 ~ 360（中心の左位置から時計回りで増加）
+	var degree int = int(math.Round(radian*180/math.Pi)) + 90 // 0 ~ 360（中心の上位置を0として、時計回りで増加）
 
 	return degree
 }
 
 func (g *Game) drawCannon(screen *ebiten.Image) {
+	w, h := cannonImage.Size()
 	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(-float64(frameWidth)/2, -float64(frameHeight)/2)
-	op.GeoM.Translate(screenWidth/2, screenHeight/2)
+	op.GeoM.Translate(-float64(w)/2, -float64(h)/2)
 	// i := (g.count / 5) % frameNum
 	degree := calculateDegree(screenWidth/2, screenHeight/2, g.mx, g.my)
-	i := degree
-	sx, sy := frameOX+i*frameWidth, frameOY
-	screen.DrawImage(cannonImage.SubImage(image.Rect(sx, sy, sx+frameWidth, sy+frameHeight)).(*ebiten.Image), op)
+	fmt.Println(degree)
+
+	op.GeoM.Rotate(float64(degree%360) * 2 * math.Pi / 360)
+	op.GeoM.Translate(screenWidth/2, screenHeight/2)
+	op.Filter = ebiten.FilterLinear // シャギー対策
+	screen.DrawImage(cannonImage, op)
+
+	// op := &ebiten.DrawImageOptions{}
+	// op.GeoM.Translate(-float64(frameWidth)/2, -float64(frameHeight)/2)
+	// op.GeoM.Translate(screenWidth/2, screenHeight/2)
+	// // i := (g.count / 5) % frameNum
+	// degree := calculateDegree(screenWidth/2, screenHeight/2, g.mx, g.my)
+	// i := degree
+	// sx, sy := frameOX+i*frameWidth, frameOY
+	// screen.DrawImage(cannonImage.SubImage(image.Rect(sx, sy, sx+frameWidth, sy+frameHeight)).(*ebiten.Image), op)
 }
 
 func (g *Game) drawCannonBall(screen *ebiten.Image) {
